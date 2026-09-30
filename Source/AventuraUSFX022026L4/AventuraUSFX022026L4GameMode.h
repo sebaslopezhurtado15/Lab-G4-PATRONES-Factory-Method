@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+//Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -8,6 +8,9 @@
 #include "AventuraUSFX022026L4GameMode.generated.h"
 
 class APlataforma;
+
+//PATRONES
+class AEnemigo;
 
 UCLASS(MinimalAPI)
 class AAventuraUSFX022026L4GameMode : public AGameModeBase
@@ -23,8 +26,10 @@ protected:
 
 public:
 
-	UPROPERTY()
-		TArray<APlataforma*> aPlataformas;
+	UPROPERTY()TArray<APlataforma*> aPlataformas;
+
+	// Guarda la referencia al enemigo Singleton
+	UPROPERTY()AEnemigo* Enemigo;
 
 	FTimerHandle TimerMovimiento;
 	FTimerHandle TimerEliminarUnaPlataformaPorHija;

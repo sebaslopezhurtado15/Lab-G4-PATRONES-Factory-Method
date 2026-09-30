@@ -11,6 +11,8 @@
 //Paimball
 #include "PlataformaIndestructible.h"
 #include "PlataformaDestructible.h"
+// Singleton enemigo
+#include "Enemigo.h"
 
 AAventuraUSFX022026L4GameMode::AAventuraUSFX022026L4GameMode()
 {
@@ -71,6 +73,27 @@ void AAventuraUSFX022026L4GameMode::BeginPlay()
 
 		PosicionesDisponibles.RemoveAt(IndiceAleatorio);
 	}
+
+
+	// Patrones-Singleton - intenta crear varios enemigos
+	for (int i = 0; i <= 4; i++)
+	{
+		FVector PosicionEnemigo(200.0f, -200.0f + (i * 100.0f), 200.0f);
+
+		AEnemigo* SpawnedEnemigo = World->SpawnActor<AEnemigo>(PosicionEnemigo,Rotacion,Parametros);
+
+		if (SpawnedEnemigo)
+		{
+			if (SpawnedEnemigo->VerificarSingleton())
+			{
+				Enemigo = SpawnedEnemigo;
+
+				GEngine->AddOnScreenDebugMessage(-1,5.f,FColor::Red,FString::Printf(TEXT("%s has been created"),*Enemigo->GetName()));
+			}
+		}
+	}
+
+
 
 
 	/* Lab4
