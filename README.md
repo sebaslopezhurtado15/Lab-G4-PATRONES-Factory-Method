@@ -1,426 +1,307 @@
-# EXAMEN DE LABORATORIO — SIS457 - Grupo 4
+# PATRÓN SINGLETON — SIS457 - Grupo 4
 
-Proyecto desarrollado en Unreal Engine 4.27.2 utilizando C++.
+Proyecto desarrollado en **Unreal Engine 4.27.2** utilizando **C++**.
 
-El examen implementa un miniescenario rectangular tipo pinball dentro del proyecto `AventuraUSFX022026L4`. El Pawn se utiliza como una plataforma controlada por el jugador, el proyectil se convierte en una pelota que rebota indefinidamente y se generan plataformas destructibles e indestructibles de forma aleatoria.
+Este trabajo implementa el patrón de diseño **Singleton** tomando como referencia el ejemplo **“Programming Elitists’ Bane… Singleton Pattern”** del libro *Unreal Engine 5 Game Programming Design Patterns in C++, Java, C#, and Blueprints*.
+
+El objetivo es comprobar de forma práctica que, aunque se intente crear varias veces un mismo objeto, solamente quede **una instancia activa** dentro del juego.
 
 ---
 
 ## 1. Objetivo del proyecto
 
-Desarrollar el examen de laboratorio aplicando conceptos de C++ y Unreal Engine 4.27.2, utilizando:
+Implementar y analizar el patrón de diseño **Singleton** dentro del proyecto `AventuraUSFX022026L4`, utilizando una solución sencilla y compatible con **Unreal Engine 4.27.2**.
 
-* `APawn`.
-* `AActor`.
-* Herencia.
-* `UStaticMeshComponent`.
-* `UProjectileMovementComponent`.
-* `TArray`.
-* `FVector`.
-* `FMath::RandRange`.
-* `SpawnActor()`.
-* `OnComponentHit`.
-* `AddDynamic`.
-* Perfiles de colisión.
-* `BlockAll`.
-* `Destroy()`.
-* `DefaultPawnClass`.
-* Materiales para diferenciar los objetos.
+Para la práctica se utilizan principalmente:
+
+- `AActor`.
+- `SpawnActor()`.
+- `TArray`.
+- `UGameplayStatics::GetAllActorsOfClass()`.
+- `Cast`.
+- `Destroy()`.
+- `UPROPERTY`.
+- `BeginPlay()`.
+- `GEngine->AddOnScreenDebugMessage()`.
 
 ---
 
-## 2. Funcionalidades implementadas
+## 2. Clases principales
 
-El examen cumple con las siguientes funcionalidades:
+Se crearon las clases:
 
-1. Se construyó un miniescenario rectangular donde se encuentran el Pawn, un enemigo y las plataformas.
-2. El Pawn cambió su apariencia para funcionar visualmente como una plataforma.
-3. El movimiento del Pawn está limitado únicamente de izquierda a derecha.
-4. El Pawn continúa utilizando `FireShot()` para generar el proyectil mediante `SpawnActor()`.
-5. El proyectil fue modificado para funcionar como una pelota que rebota dentro del escenario.
-6. La pelota ya no se destruye al impactar y su tiempo de vida es ilimitado.
-7. Se generan aleatoriamente entre 5 y 20 plataformas.
-8. Las plataformas generadas pueden ser destructibles o indestructibles.
-9. `APlataformaDestructible` y `APlataformaIndestructible` heredan de `APlataforma`.
-10. Las plataformas destructibles utilizan color rojo y se eliminan cuando son golpeadas por la pelota.
-11. Las plataformas indestructibles utilizan color azul y hacen rebotar la pelota sin destruirse.
-12. Las posiciones y el tipo de cada plataforma se seleccionan aleatoriamente durante la ejecución.
+- `ASingleton_Main`
+- `AInventory`
+
+### `ASingleton_Main`
+
+Esta clase se utiliza para realizar la prueba del patrón.
+
+En `BeginPlay()` intenta crear varias instancias de `AInventory` mediante:
+
+```cpp
+GetWorld()->SpawnActor<AInventory>(AInventory::StaticClass());
+```
+
+El ciclo utilizado es:
+
+```cpp
+for (int i = 0; i <= 4; i++)
+```
+
+Por lo tanto, se realizan **5 intentos de creación**.
+
+Cada vez que un `Inventory` es creado correctamente, se guarda su referencia y se muestra un mensaje en pantalla.
 
 ---
 
-## 3. Pawn
+## 3. Clase Inventory
 
-La clase `AAventuraUSFX022026L4Pawn` hereda de `APawn` y fue modificada para representar una plataforma controlada por el jugador.
+La clase `AInventory` es la clase sobre la que se aplica la lógica del patrón Singleton.
 
-La apariencia original fue reemplazada por una malla cúbica:
-
-```cpp
-StaticMesh'/Game/StarterContent/Shapes/Shape_Cube.Shape_Cube'
-```
-
-También se asignó un material negro:
+Cada vez que se crea un nuevo `Inventory`, se buscan las instancias existentes mediante:
 
 ```cpp
-Material'/Game/MaterialesPaintball/M_PawNegra.M_PawNegra'
-```
+TArray<AActor*> Instances;
 
-La escala utilizada permite darle una forma similar a una plataforma:
-
-```cpp
-ShipMeshComponent->SetRelativeScale3D(FVector(0.5f, 2.5f, 0.5f));
-```
-
-El movimiento fue restringido únicamente al eje horizontal utilizando `MoveRight`:
-
-```cpp
-const float RightValue = GetInputAxisValue(MoveRightBinding);
-const FVector MoveDirection = FVector(0.0f, RightValue, 0.0f);
-```
-
-De esta forma, las entradas `W` y `S` ya no modifican el desplazamiento del Pawn durante el juego.
-
----
-
-## 4. Pelota y rebote
-
-La clase `AAventuraUSFX022026L4Projectile` representa la pelota utilizada en el miniescenario.
-
-Su movimiento continúa utilizando un:
-
-```cpp
-UProjectileMovementComponent
-```
-
-Para permitir el rebote se configuró:
-
-```cpp
-ProjectileMovement->bShouldBounce = true;
-ProjectileMovement->Bounciness = 1.0f;
-```
-
-La gravedad fue desactivada:
-
-```cpp
-ProjectileMovement->ProjectileGravityScale = 0.0f;
-```
-
-También se restringió el movimiento al plano del escenario:
-
-```cpp
-ProjectileMovement->bConstrainToPlane = true;
-ProjectileMovement->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
-```
-
-Para evitar que la pelota desaparezca automáticamente se utiliza:
-
-```cpp
-InitialLifeSpan = 0.0f;
-```
-
-La llamada original a:
-
-```cpp
-Destroy();
-```
-
-fue deshabilitada dentro de `OnHit()`. De esta forma la pelota permanece activa y continúa rebotando dentro del escenario.
-
----
-
-## 5. Plataforma destructible
-
-La clase:
-
-```cpp
-APlataformaDestructible
-```
-
-hereda directamente de:
-
-```cpp
-APlataforma
-```
-
-Utiliza una malla cúbica y un material rojo:
-
-```cpp
-Material'/Game/MaterialesPaintball/M_PlataformaRoja.M_PlataformaRoja'
-```
-
-Su colisión utiliza:
-
-```cpp
-mallaPlataforma->SetCollisionProfileName(TEXT("BlockAll"));
-```
-
-El evento de impacto se conecta mediante:
-
-```cpp
-mallaPlataforma->OnComponentHit.AddDynamic(
-    this,
-    &APlataformaDestructible::AlRecibirImpacto
+UGameplayStatics::GetAllActorsOfClass(
+    GetWorld(),
+    AInventory::StaticClass(),
+    Instances
 );
 ```
 
-Dentro de `AlRecibirImpacto()` se comprueba si el objeto que produjo la colisión utiliza el perfil `Projectile`.
+Después se comprueba:
 
-Cuando la pelota golpea la plataforma se ejecuta:
+```cpp
+if (Instances.Num() > 1)
+```
+
+Si existen más de una instancia, significa que ya había un `Inventory` creado anteriormente.
+
+Entonces se guarda la referencia al primero:
+
+```cpp
+Instance = Cast<AInventory>(Instances[0]);
+```
+
+y el nuevo objeto se elimina mediante:
 
 ```cpp
 Destroy();
 ```
 
-y la plataforma desaparece del escenario.
+De esta manera, aunque se intente crear varios `Inventory`, solamente permanece uno.
 
 ---
 
-## 6. Plataforma indestructible
+## 4. Funcionamiento
 
-La clase:
-
-```cpp
-APlataformaIndestructible
-```
-
-también hereda de:
-
-```cpp
-APlataforma
-```
-
-Utiliza una malla cúbica y un material azul:
-
-```cpp
-Material'/Game/MaterialesPaintball/M_PlataformaAzul.M_PlataformaAzul'
-```
-
-Su perfil de colisión es:
-
-```cpp
-mallaPlataforma->SetCollisionProfileName(TEXT("BlockAll"));
-```
-
-La plataforma no ejecuta `Destroy()` cuando recibe un impacto.
-
-Por esta razón, al chocar contra ella la pelota utiliza su configuración de rebote y continúa desplazándose por el escenario.
-
----
-
-## 7. GameMode y generación aleatoria
-
-La clase `AAventuraUSFX022026L4GameMode` administra la creación de las plataformas del examen.
-
-El Pawn principal se configura mediante:
-
-```cpp
-DefaultPawnClass = AAventuraUSFX022026L4Pawn::StaticClass();
-```
-
-Las plataformas se almacenan dentro de:
-
-```cpp
-TArray<APlataforma*> aPlataformas;
-```
-
-Primero se construye un `TArray<FVector>` con posiciones disponibles dentro del miniescenario.
-
-Después se selecciona una cantidad aleatoria:
-
-```cpp
-int CantidadPlataformas = FMath::RandRange(5, 20);
-```
-
-Para cada plataforma se selecciona aleatoriamente:
-
-* Una posición disponible.
-* El tipo de plataforma.
-
-El tipo se determina mediante:
-
-```cpp
-int TipoAleatorio = FMath::RandRange(0, 1);
-```
-
-Si el resultado es `0`, se genera una plataforma indestructible:
-
-```cpp
-World->SpawnActor<APlataformaIndestructible>();
-```
-
-Si el resultado es `1`, se genera una plataforma destructible:
-
-```cpp
-World->SpawnActor<APlataformaDestructible>();
-```
-
-Después de utilizar una posición se elimina del arreglo mediante:
-
-```cpp
-PosicionesDisponibles.RemoveAt(IndiceAleatorio);
-```
-
-Esto evita que dos plataformas sean generadas exactamente en la misma posición.
-
----
-
-## 8. Funcionamiento
+El funcionamiento general es:
 
 ```text
 Inicio
   |
   v
-Miniescenario rectangular
+Singleton_Main ejecuta BeginPlay()
   |
-  +-------------------------+
-  |                         |
-  v                         v
-Pawn                    GameMode
-  |                         |
-  |                         v
-  |                Cantidad aleatoria
-  |                    entre 5 y 20
-  |                         |
-  |                         v
-  |                Crear plataformas
-  |                         |
-  |              +----------+----------+
-  |              |                     |
-  |              v                     v
-  |       Indestructible          Destructible
-  |          azul                    roja
-  |              |                     |
-  |              |                     |
-  v              |                     |
-Mover izquierda  |                     |
-y derecha        |                     |
-  |              |                     |
-  v              |                     |
-Disparar pelota  |                     |
-  |              |                     |
-  v              v                     v
-Pelota rebota --------> Rebota      Impacto
-indefinidamente                         |
-                                       v
-                                   Destroy()
+  v
+Intenta crear varios Inventory
+  |
+  v
+Cada Inventory busca cuántos existen
+  |
+  +----------------------------+
+  |                            |
+  v                            v
+Solo existe 1             Existen más de 1
+  |                            |
+  v                            v
+Se mantiene              Guarda el primero
+                               |
+                               v
+                         Destroy() al nuevo
+                               |
+                               v
+                    Solo queda una instancia
 ```
 
 ---
 
-## 9. Controles
+## 5. Comprobación del patrón
 
-Movimiento del Pawn:
+Durante la ejecución aparecen mensajes similares a:
 
-* `A` → mover hacia la izquierda.
-* `D` → mover hacia la derecha.
-* `Gamepad Left X` → movimiento horizontal.
+```text
+Inventory_0 has been created
+Inventory_0 already exists
+Inventory_0 already exists
+Inventory_0 already exists
+Inventory_0 already exists
+```
 
-Dirección del disparo:
+Esto demuestra que:
 
-* Flecha arriba.
-* Flecha abajo.
-* Flecha izquierda.
-* Flecha derecha.
-* `Gamepad Right Stick`.
+1. El primer `Inventory` se crea correctamente.
+2. Los siguientes intentos detectan que ya existe uno.
+3. Los nuevos objetos son destruidos.
+4. Al final solamente queda un `Inventory` activo.
+
+También se puede comprobar en el **World Outliner**, donde permanece una sola instancia de `Inventory`.
 
 ---
 
-## 10. Archivos principales
+## 6. Representación visual
+
+Para facilitar la demostración se agregó un `UStaticMeshComponent` a `AInventory`.
+
+Se utiliza el cubo básico de Unreal Engine únicamente como representación visual:
+
+```cpp
+static ConstructorHelpers::FObjectFinder<UStaticMesh> Cubo(
+    TEXT("/Engine/BasicShapes/Cube.Cube")
+);
+```
+
+La malla no modifica la lógica del patrón Singleton.
+
+Su finalidad es permitir comprobar visualmente que, aunque existan varios intentos de creación, solamente queda **un objeto visible**.
+
+---
+
+## 7. Archivos principales
 
 ```text
 Source/AventuraUSFX022026L4/
 │
-├── AventuraUSFX022026L4GameMode.h
-├── AventuraUSFX022026L4GameMode.cpp
-│
-├── AventuraUSFX022026L4Pawn.h
-├── AventuraUSFX022026L4Pawn.cpp
-│
-├── AventuraUSFX022026L4Projectile.h
-├── AventuraUSFX022026L4Projectile.cpp
-│
-├── Plataforma.h
-├── Plataforma.cpp
-│
-├── PlataformaDestructible.h
-├── PlataformaDestructible.cpp
-│
-├── PlataformaIndestructible.h
-└── PlataformaIndestructible.cpp
+├── Singleton_Main.h
+├── Singleton_Main.cpp
+├── Inventory.h
+└── Inventory.cpp
 ```
 
----
+### `Singleton_Main.h`
 
-## 11. Conceptos utilizados
+Contiene la declaración de la clase `ASingleton_Main` y el puntero:
 
-En el examen se aplicaron conceptos de Programación Orientada a Objetos:
+```cpp
+AInventory* Inventory;
+```
 
-* Herencia: `APlataformaDestructible` y `APlataformaIndestructible` heredan de `APlataforma`.
-* Clases y objetos: se utilizan clases diferentes para representar al Pawn, la pelota y las plataformas.
-* Métodos: `FireShot()`, `OnHit()` y `AlRecibirImpacto()`.
-* Punteros: las plataformas se almacenan mediante `APlataforma*`.
-* Polimorfismo: el `TArray<APlataforma*>` puede almacenar objetos de las clases hijas destructible e indestructible.
+### `Singleton_Main.cpp`
 
-También se utilizaron elementos propios de Unreal Engine como:
+Contiene la lógica que intenta crear varios objetos `AInventory` mediante `SpawnActor()`.
 
-* `UStaticMeshComponent`.
-* `UProjectileMovementComponent`.
-* `TArray`.
-* `FVector`.
-* `FMath::RandRange`.
-* `SpawnActor()`.
-* `OnComponentHit`.
-* `AddDynamic`.
-* `Destroy()`.
-* `DefaultPawnClass`.
+### `Inventory.h`
 
----
+Contiene la declaración de `AInventory`, el puntero:
 
-## 12. Tecnologías utilizadas
+```cpp
+AInventory* Instance;
+```
 
-* C++.
-* Unreal Engine 4.27.2.
-* Visual Studio.
-* Git.
-* GitHub.
-* Git LFS.
+y el componente utilizado para representar visualmente el objeto.
+
+### `Inventory.cpp`
+
+Contiene la lógica que:
+
+- busca las instancias existentes;
+- comprueba cuántas hay;
+- guarda la primera instancia;
+- destruye las instancias adicionales.
 
 ---
 
-## 13. Ejecución
+## 8. Conceptos utilizados
+
+En esta práctica se aplican conceptos de Programación Orientada a Objetos y C++:
+
+- **Clase:** `ASingleton_Main` y `AInventory`.
+- **Objeto:** cada instancia creada de `AInventory`.
+- **Herencia:** ambas clases heredan de `AActor`.
+- **Punteros:** `Inventory` e `Instance`.
+- **Métodos:** `BeginPlay()`, `Tick()` y `Destroy()`.
+- **Patrón de diseño:** Singleton.
+- **Arreglos de Unreal:** `TArray`.
+- **Casting:** `Cast<AInventory>()`.
+
+También se utilizan elementos propios de Unreal Engine 4.27.2:
+
+- `AActor`.
+- `SpawnActor()`.
+- `GetWorld()`.
+- `GetAllActorsOfClass()`.
+- `CreateDefaultSubobject()`.
+- `UStaticMeshComponent`.
+- `GEngine->AddOnScreenDebugMessage()`.
+
+---
+
+## 9. ¿Por qué es Singleton?
+
+La idea del patrón Singleton es permitir que exista una sola instancia de una clase.
+
+En esta implementación:
+
+- `Singleton_Main` intenta crear varios objetos.
+- `Inventory` comprueba si ya existe otro objeto de su misma clase.
+- Si encuentra más de uno, destruye el nuevo.
+- El resultado final es una sola instancia activa.
+
+La idea principal se puede resumir así:
+
+> Aunque se intente crear varias veces el objeto, solamente uno permanece en el juego.
+
+---
+
+## 10. Posibles aplicaciones dentro del juego
+
+Después de comprobar el funcionamiento del patrón, se pueden plantear aplicaciones dentro del proyecto, por ejemplo:
+
+- Permitir solamente un proyectil especial activo al mismo tiempo.
+- Permitir solamente un súper ataque activo.
+- Crear una única plataforma especial.
+- Mantener un único power-up especial dentro del escenario.
+- Tener un solo gestor encargado de administrar las plataformas.
+- Controlar una única configuración general de la partida.
+
+Estas ideas corresponden a posibles aplicaciones futuras del patrón y no modifican la prueba principal realizada con `Inventory`.
+
+---
+
+## 11. Tecnologías utilizadas
+
+- C++.
+- Unreal Engine 4.27.2.
+- Visual Studio.
+- Git.
+- GitHub.
+
+---
+
+## 12. Ejecución
 
 1. Abrir `AventuraUSFX022026L4.uproject` con Unreal Engine 4.27.2.
 2. Compilar el código C++.
-3. Ejecutar el nivel.
-4. Comprobar que el Pawn posee apariencia de plataforma.
-5. Mover el Pawn únicamente de izquierda a derecha.
-6. Disparar la pelota utilizando las flechas de dirección.
-7. Comprobar que la pelota continúa rebotando sin destruirse.
-8. Observar que se generan aleatoriamente entre 5 y 20 plataformas.
-9. Comprobar que las plataformas azules permanecen después del impacto.
-10. Comprobar que las plataformas rojas desaparecen cuando son golpeadas por la pelota.
+3. Colocar `Singleton_Main` dentro del nivel.
+4. Ejecutar el juego.
+5. Observar los mensajes mostrados en pantalla.
+6. Verificar en el `World Outliner` que solamente queda un `Inventory`.
+7. Si se utiliza la representación visual, comprobar que solamente permanece una malla de `Inventory`.
 
 ---
 
-## 14. Resultado
+## 13. Resultado
 
-Al ejecutar el proyecto se obtiene un miniescenario rectangular tipo pinball.
+El patrón Singleton fue implementado correctamente.
 
-El Pawn se desplaza únicamente de izquierda a derecha y puede lanzar una pelota en diferentes direcciones.
+Aunque `Singleton_Main` realiza varios intentos de creación, la clase `AInventory` detecta las instancias existentes y elimina las adicionales mediante `Destroy()`.
 
-La pelota permanece activa y rebota continuamente dentro del escenario. Las plataformas indestructibles de color azul permanecen en el nivel y producen el rebote de la pelota, mientras que las plataformas destructibles de color rojo desaparecen cuando reciben un impacto.
-
-En cada ejecución se genera aleatoriamente una cantidad de entre 5 y 20 plataformas, utilizando posiciones disponibles dentro del miniescenario.
+Como resultado, solamente permanece **una instancia de `Inventory`** durante la ejecución.
 
 ---
 
-## 15. Repositorio
+## 14. Repositorio
 
-https://github.com/sebaslopezhurtado15/EXAMEN-LABORATORIO/tree/master
-
----
-
-## 16. Video
-
-Enlace al video explicativo:
-
-`Agregar enlace del video aquí`
+https://github.com/sebaslopezhurtado15/Lab-G4-PATRONES-Singleton
