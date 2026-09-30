@@ -4,69 +4,105 @@ Proyecto desarrollado en **Unreal Engine 4.27.2** utilizando **C++**.
 
 Este trabajo implementa el patrón de diseño **Singleton** tomando como referencia el ejemplo **“Programming Elitists’ Bane… Singleton Pattern”** del libro *Unreal Engine 5 Game Programming Design Patterns in C++, Java, C#, and Blueprints*.
 
-El objetivo es comprobar de forma práctica que, aunque se intente crear varias veces un mismo objeto, solamente quede **una instancia activa** dentro del juego.
+La implementación final fue adaptada al juego `AventuraUSFX022026L4` utilizando un **enemigo de tipo `ACharacter`**. El objetivo es que, aunque el juego intente crear varios enemigos, solamente permanezca **una instancia activa**.
 
 ---
 
-## 1. Objetivo del proyecto
+## 1. Objetivo
 
-Implementar y analizar el patrón de diseño **Singleton** dentro del proyecto `AventuraUSFX022026L4`, utilizando una solución sencilla y compatible con **Unreal Engine 4.27.2**.
+Aplicar el patrón **Singleton** dentro del juego para garantizar que exista un solo enemigo.
 
-Para la práctica se utilizan principalmente:
+Al iniciar la partida:
 
-- `AActor`.
-- `SpawnActor()`.
-- `TArray`.
-- `UGameplayStatics::GetAllActorsOfClass()`.
-- `Cast`.
-- `Destroy()`.
-- `UPROPERTY`.
-- `BeginPlay()`.
-- `GEngine->AddOnScreenDebugMessage()`.
+- El `GameMode` intenta crear varios enemigos.
+- Cada enemigo comprueba si ya existe otro.
+- El primer enemigo permanece.
+- Los enemigos adicionales se destruyen.
+- Al final solamente queda **un enemigo activo**.
+
+La inicialización se realiza automáticamente desde el `GameMode`, por lo que ya no es necesario colocar manualmente un actor de prueba dentro del nivel.
 
 ---
 
-## 2. Clases principales
+## 2. Implementación final
 
-Se crearon las clases:
+Las clases principales utilizadas para el patrón son:
 
-- `ASingleton_Main`
-- `AInventory`
+- `AAventuraUSFX022026L4GameMode`
+- `AEnemigo`
 
-### `ASingleton_Main`
+La versión inicial del ejercicio se realizó siguiendo el ejemplo del libro con clases de prueba `Singleton_Main` e `Inventory`. Después de comprobar su funcionamiento, el patrón fue llevado al juego real utilizando `AEnemigo` y el `GameMode`.
 
-Esta clase se utiliza para realizar la prueba del patrón.
+Las clases de prueba ya no son necesarias en la implementación final.
 
-En `BeginPlay()` intenta crear varias instancias de `AInventory` mediante:
+---
+
+## 3. Clase Enemigo
+
+`AEnemigo` hereda de:
 
 ```cpp
-GetWorld()->SpawnActor<AInventory>(AInventory::StaticClass());
+ACharacter
 ```
 
-El ciclo utilizado es:
+Esto permite trabajar con el enemigo como un personaje de Unreal Engine.
+
+La clase contiene una referencia a la instancia existente:
 
 ```cpp
-for (int i = 0; i <= 4; i++)
+UPROPERTY()
+AEnemigo* Instance;
 ```
 
-Por lo tanto, se realizan **5 intentos de creación**.
+También contiene una malla para visualizar al enemigo:
 
-Cada vez que un `Inventory` es creado correctamente, se guarda su referencia y se muestra un mensaje en pantalla.
+```cpp
+UPROPERTY(VisibleAnywhere)
+class UStaticMeshComponent* MallaEnemigo;
+```
 
 ---
 
-## 3. Clase Inventory
+## 4. Malla del enemigo
 
-La clase `AInventory` es la clase sobre la que se aplica la lógica del patrón Singleton.
+Para representar visualmente al enemigo se utiliza una malla del **Starter Content**:
 
-Cada vez que se crea un nuevo `Inventory`, se buscan las instancias existentes mediante:
+```cpp
+TEXT("/Game/StarterContent/Props/SM_Statue.SM_Statue")
+```
+
+La malla se conecta al `RootComponent` del `Character`:
+
+```cpp
+MallaEnemigo->SetupAttachment(RootComponent);
+```
+
+Además, se aumenta su escala:
+
+```cpp
+MallaEnemigo->SetRelativeScale3D(FVector(3.0f, 3.0f, 3.0f));
+```
+
+De esta manera el enemigo se puede identificar fácilmente dentro del escenario.
+
+---
+
+## 5. Verificación Singleton
+
+La lógica principal está dentro de:
+
+```cpp
+bool AEnemigo::VerificarSingleton()
+```
+
+Primero se buscan todos los enemigos existentes:
 
 ```cpp
 TArray<AActor*> Instances;
 
 UGameplayStatics::GetAllActorsOfClass(
     GetWorld(),
-    AInventory::StaticClass(),
+    AEnemigo::StaticClass(),
     Instances
 );
 ```
@@ -77,231 +113,286 @@ Después se comprueba:
 if (Instances.Num() > 1)
 ```
 
-Si existen más de una instancia, significa que ya había un `Inventory` creado anteriormente.
+Si existe más de un enemigo, significa que ya había una instancia válida.
 
-Entonces se guarda la referencia al primero:
+Entonces se guarda la referencia al primer enemigo:
 
 ```cpp
-Instance = Cast<AInventory>(Instances[0]);
+Instance = Cast<AEnemigo>(Instances[0]);
 ```
 
-y el nuevo objeto se elimina mediante:
+y el nuevo enemigo se destruye:
 
 ```cpp
 Destroy();
 ```
 
-De esta manera, aunque se intente crear varios `Inventory`, solamente permanece uno.
+La función devuelve:
+
+```cpp
+return false;
+```
+
+cuando el nuevo enemigo debe eliminarse.
+
+Si solamente existe una instancia, devuelve:
+
+```cpp
+return true;
+```
+
+y ese enemigo permanece en el juego.
 
 ---
 
-## 4. Funcionamiento
+## 6. Inicio automático desde GameMode
 
-El funcionamiento general es:
+La creación de los enemigos se realiza dentro de:
 
-```text
-Inicio
-  |
-  v
-Singleton_Main ejecuta BeginPlay()
-  |
-  v
-Intenta crear varios Inventory
-  |
-  v
-Cada Inventory busca cuántos existen
-  |
-  +----------------------------+
-  |                            |
-  v                            v
-Solo existe 1             Existen más de 1
-  |                            |
-  v                            v
-Se mantiene              Guarda el primero
-                               |
-                               v
-                         Destroy() al nuevo
-                               |
-                               v
-                    Solo queda una instancia
+```cpp
+AAventuraUSFX022026L4GameMode::BeginPlay()
+```
+
+Esto permite que la prueba Singleton comience automáticamente al presionar **Play**.
+
+El `GameMode` intenta crear cinco enemigos:
+
+```cpp
+for (int i = 0; i <= 4; i++)
+```
+
+Las posiciones se separan para permitir que los `ACharacter` puedan generarse correctamente:
+
+```cpp
+FVector PosicionEnemigo(
+    200.0f,
+    -200.0f + (i * 100.0f),
+    200.0f
+);
+```
+
+Después se crea cada enemigo con `SpawnActor()`.
+
+Si el enemigo fue creado, se llama:
+
+```cpp
+SpawnedEnemigo->VerificarSingleton()
+```
+
+Solamente el enemigo que obtiene `true` se guarda como instancia válida:
+
+```cpp
+Enemigo = SpawnedEnemigo;
 ```
 
 ---
 
-## 5. Comprobación del patrón
+## 7. Flujo general
+
+```text
+PLAY
+ |
+ v
+GameMode::BeginPlay()
+ |
+ v
+Intenta crear 5 enemigos
+ |
+ v
+Cada AEnemigo ejecuta VerificarSingleton()
+ |
+ +-------------------------------+
+ |                               |
+ v                               v
+Primer enemigo              Ya existe otro
+ |                               |
+ v                               v
+return true                 Guarda Instance
+ |                               |
+ v                               v
+Permanece                    Destroy()
+                                 |
+                                 v
+                            return false
+```
+
+Resultado final:
+
+```text
+5 intentos de creación
+        ↓
+1 enemigo permanece
+        ↓
+4 enemigos se destruyen
+```
+
+---
+
+## 8. Comprobación
 
 Durante la ejecución aparecen mensajes similares a:
 
 ```text
-Inventory_0 has been created
-Inventory_0 already exists
-Inventory_0 already exists
-Inventory_0 already exists
-Inventory_0 already exists
+Enemigo_0 has been created
+Enemigo_0 already exists
+Enemigo_0 already exists
+Enemigo_0 already exists
+Enemigo_0 already exists
 ```
 
 Esto demuestra que:
 
-1. El primer `Inventory` se crea correctamente.
-2. Los siguientes intentos detectan que ya existe uno.
-3. Los nuevos objetos son destruidos.
-4. Al final solamente queda un `Inventory` activo.
+1. El primer enemigo fue creado.
+2. Los demás intentos detectaron que el enemigo ya existía.
+3. Las instancias adicionales fueron destruidas.
+4. Al final queda solamente un enemigo visible.
 
-También se puede comprobar en el **World Outliner**, donde permanece una sola instancia de `Inventory`.
+También se puede comprobar en el **World Outliner**, donde debe existir una sola instancia de `AEnemigo`.
 
 ---
 
-## 6. Representación visual
+## 9. ¿Por qué se inicia desde GameMode?
 
-Para facilitar la demostración se agregó un `UStaticMeshComponent` a `AInventory`.
+Inicialmente la prueba se ejecutaba colocando manualmente un actor en el nivel.
 
-Se utiliza el cubo básico de Unreal Engine únicamente como representación visual:
+En la implementación final se utiliza el `GameMode` porque:
 
-```cpp
-static ConstructorHelpers::FObjectFinder<UStaticMesh> Cubo(
-    TEXT("/Engine/BasicShapes/Cube.Cube")
-);
+- Su `BeginPlay()` se ejecuta automáticamente al comenzar la partida.
+- Ya forma parte del flujo principal del proyecto.
+- No es necesario colocar manualmente un objeto Singleton en el mapa.
+- Permite iniciar la creación de enemigos directamente al presionar **Play**.
+
+La responsabilidad queda separada de forma sencilla:
+
+```text
+GameMode
+→ inicia la creación de enemigos.
+
+AEnemigo
+→ comprueba el Singleton y evita duplicados.
 ```
 
-La malla no modifica la lógica del patrón Singleton.
-
-Su finalidad es permitir comprobar visualmente que, aunque existan varios intentos de creación, solamente queda **un objeto visible**.
-
 ---
 
-## 7. Archivos principales
+## 10. Archivos principales
 
 ```text
 Source/AventuraUSFX022026L4/
 │
-├── Singleton_Main.h
-├── Singleton_Main.cpp
-├── Inventory.h
-└── Inventory.cpp
+├── AventuraUSFX022026L4GameMode.h
+├── AventuraUSFX022026L4GameMode.cpp
+├── Enemigo.h
+└── Enemigo.cpp
 ```
 
-### `Singleton_Main.h`
+### `AventuraUSFX022026L4GameMode.h`
 
-Contiene la declaración de la clase `ASingleton_Main` y el puntero:
+Contiene la referencia:
 
 ```cpp
-AInventory* Inventory;
+UPROPERTY()
+AEnemigo* Enemigo;
 ```
 
-### `Singleton_Main.cpp`
+### `AventuraUSFX022026L4GameMode.cpp`
 
-Contiene la lógica que intenta crear varios objetos `AInventory` mediante `SpawnActor()`.
+Contiene la creación automática de los enemigos dentro de `BeginPlay()`.
 
-### `Inventory.h`
+### `Enemigo.h`
 
-Contiene la declaración de `AInventory`, el puntero:
+Declara:
 
-```cpp
-AInventory* Instance;
-```
+- `MallaEnemigo`.
+- `Instance`.
+- `VerificarSingleton()`.
 
-y el componente utilizado para representar visualmente el objeto.
+### `Enemigo.cpp`
 
-### `Inventory.cpp`
+Contiene:
 
-Contiene la lógica que:
-
-- busca las instancias existentes;
-- comprueba cuántas hay;
-- guarda la primera instancia;
-- destruye las instancias adicionales.
+- Configuración de la malla.
+- Escala del enemigo.
+- Búsqueda de enemigos existentes.
+- Validación del Singleton.
+- `Destroy()` de las instancias adicionales.
 
 ---
 
-## 8. Conceptos utilizados
+## 11. Conceptos utilizados
 
-En esta práctica se aplican conceptos de Programación Orientada a Objetos y C++:
+### C++ y Programación Orientada a Objetos
 
-- **Clase:** `ASingleton_Main` y `AInventory`.
-- **Objeto:** cada instancia creada de `AInventory`.
-- **Herencia:** ambas clases heredan de `AActor`.
-- **Punteros:** `Inventory` e `Instance`.
-- **Métodos:** `BeginPlay()`, `Tick()` y `Destroy()`.
-- **Patrón de diseño:** Singleton.
-- **Arreglos de Unreal:** `TArray`.
-- **Casting:** `Cast<AInventory>()`.
+- Clases.
+- Objetos.
+- Herencia.
+- Punteros.
+- Métodos.
+- `bool`.
+- `TArray`.
+- `Cast`.
+- Patrón Singleton.
 
-También se utilizan elementos propios de Unreal Engine 4.27.2:
+### Unreal Engine 4.27.2
 
-- `AActor`.
+- `ACharacter`.
+- `AGameModeBase`.
+- `BeginPlay()`.
 - `SpawnActor()`.
 - `GetWorld()`.
 - `GetAllActorsOfClass()`.
-- `CreateDefaultSubobject()`.
+- `Destroy()`.
+- `UPROPERTY`.
 - `UStaticMeshComponent`.
+- `CreateDefaultSubobject()`.
+- `ConstructorHelpers::FObjectFinder`.
 - `GEngine->AddOnScreenDebugMessage()`.
 
 ---
 
-## 9. ¿Por qué es Singleton?
+## 12. Relación con el libro
 
-La idea del patrón Singleton es permitir que exista una sola instancia de una clase.
+El ejemplo del libro utiliza una clase que busca otras instancias de su mismo tipo y elimina las adicionales.
 
-En esta implementación:
+En el proyecto se conserva la misma idea:
 
-- `Singleton_Main` intenta crear varios objetos.
-- `Inventory` comprueba si ya existe otro objeto de su misma clase.
-- Si encuentra más de uno, destruye el nuevo.
-- El resultado final es una sola instancia activa.
+```text
+Buscar instancias
+      ↓
+¿Hay más de una?
+      ↓
+Sí
+      ↓
+Guardar la primera
+      ↓
+Destruir la nueva
+```
 
-La idea principal se puede resumir así:
-
-> Aunque se intente crear varias veces el objeto, solamente uno permanece en el juego.
-
----
-
-## 10. Posibles aplicaciones dentro del juego
-
-Después de comprobar el funcionamiento del patrón, se pueden plantear aplicaciones dentro del proyecto, por ejemplo:
-
-- Permitir solamente un proyectil especial activo al mismo tiempo.
-- Permitir solamente un súper ataque activo.
-- Crear una única plataforma especial.
-- Mantener un único power-up especial dentro del escenario.
-- Tener un solo gestor encargado de administrar las plataformas.
-- Controlar una única configuración general de la partida.
-
-Estas ideas corresponden a posibles aplicaciones futuras del patrón y no modifican la prueba principal realizada con `Inventory`.
-
----
-
-## 11. Tecnologías utilizadas
-
-- C++.
-- Unreal Engine 4.27.2.
-- Visual Studio.
-- Git.
-- GitHub.
-
----
-
-## 12. Ejecución
-
-1. Abrir `AventuraUSFX022026L4.uproject` con Unreal Engine 4.27.2.
-2. Compilar el código C++.
-3. Colocar `Singleton_Main` dentro del nivel.
-4. Ejecutar el juego.
-5. Observar los mensajes mostrados en pantalla.
-6. Verificar en el `World Outliner` que solamente queda un `Inventory`.
-7. Si se utiliza la representación visual, comprobar que solamente permanece una malla de `Inventory`.
+La adaptación realizada consiste en aplicar esa lógica a un enemigo que hereda de `ACharacter` y hacer que la creación se inicie automáticamente desde el `GameMode`.
 
 ---
 
 ## 13. Resultado
 
-El patrón Singleton fue implementado correctamente.
+El patrón Singleton quedó integrado al juego.
 
-Aunque `Singleton_Main` realiza varios intentos de creación, la clase `AInventory` detecta las instancias existentes y elimina las adicionales mediante `Destroy()`.
+Al presionar **Play**, el `GameMode` intenta crear cinco enemigos, pero la clase `AEnemigo` verifica las instancias existentes y destruye las adicionales.
 
-Como resultado, solamente permanece **una instancia de `Inventory`** durante la ejecución.
+El resultado final es:
+
+> **Aunque se intente crear varios enemigos, solamente permanece uno dentro del juego.**
 
 ---
 
-## 14. Repositorio
+## 14. Tecnologías utilizadas
+
+- Unreal Engine 4.27.2
+- C++
+- Visual Studio
+- Git
+- GitHub
+
+---
+
+## 15. Repositorio
 
 https://github.com/sebaslopezhurtado15/Lab-G4-PATRONES-Singleton
