@@ -8,6 +8,10 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+//Factory Method
+#include "PlataformaDestructible.h"
+#include "PlataformaIndestructible.h"
+#include "Engine/World.h"
 
 // Sets default values
 APlataforma::APlataforma()
@@ -61,6 +65,26 @@ APlataforma::APlataforma()
 
 
 	bMover = false;
+}
+
+
+//Factory Method
+APlataforma* APlataforma::CrearPlataforma(UWorld* World,int Tipo,const FVector& Posicion,const FRotator& Rotacion)
+{
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+	FActorSpawnParameters Parametros;
+	Parametros.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (Tipo == 0)
+	{
+		return World->SpawnActor<APlataformaIndestructible>(Posicion,Rotacion,Parametros);
+	}
+	else
+	{
+		return World->SpawnActor<APlataformaDestructible>(Posicion,Rotacion,Parametros);
+	}
 }
 
 void APlataforma::BeginPlay()

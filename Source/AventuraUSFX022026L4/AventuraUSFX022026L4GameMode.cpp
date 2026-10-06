@@ -47,11 +47,26 @@ void AAventuraUSFX022026L4GameMode::BeginPlay()
 			);
 		}
 	}
+
 	//Creacion de 5 a 20 plataformas
 	int CantidadPlataformas = FMath::RandRange(5, 20);
 	aPlataformas.Reserve(CantidadPlataformas);
 	APlataforma* PlataformaActual = nullptr;
 
+	//Factory Method
+	for (int i = 0; i < CantidadPlataformas; i++)
+	{
+		int IndiceAleatorio = FMath::RandRange(0, PosicionesDisponibles.Num() - 1);
+		FVector SpawnLocation = PosicionesDisponibles[IndiceAleatorio];
+		int TipoAleatorio = FMath::RandRange(0, 1);
+		PlataformaActual = APlataforma::CrearPlataforma(World,TipoAleatorio,SpawnLocation,Rotacion);
+		if (IsValid(PlataformaActual))
+		{
+			aPlataformas.Add(PlataformaActual);
+		}
+		PosicionesDisponibles.RemoveAt(IndiceAleatorio);
+	}
+	/*antes para plataforma 5 o 20
 	for (int i = 0; i < CantidadPlataformas; i++)
 	{
 		int IndiceAleatorio = FMath::RandRange(0,PosicionesDisponibles.Num() - 1);
@@ -72,7 +87,7 @@ void AAventuraUSFX022026L4GameMode::BeginPlay()
 		}
 
 		PosicionesDisponibles.RemoveAt(IndiceAleatorio);
-	}
+	}*/
 
 
 	// Patrones-Singleton - intenta crear varios enemigos
