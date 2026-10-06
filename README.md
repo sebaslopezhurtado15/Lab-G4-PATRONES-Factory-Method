@@ -1,5 +1,3 @@
-[Uploading README.md…]()
-
 # PATRÓN FACTORY METHOD — SIS457 - Grupo 4
 
 Proyecto desarrollado en **Unreal Engine 4.27.2** utilizando **C++**.
