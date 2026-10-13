@@ -13,8 +13,11 @@
 #include "PlataformaDestructible.h"
 // Singleton enemigo
 #include "Enemigo.h"
-// Factory Method
-#include "FabricaPlataformas.h"
+
+// Patron Abstract Factory
+#include "FabricaAbstracta.h"
+#include "FabricaRoja.h"
+#include "FabricaAzul.h"
 
 AAventuraUSFX022026L4GameMode::AAventuraUSFX022026L4GameMode()
 {
@@ -55,17 +58,29 @@ void AAventuraUSFX022026L4GameMode::BeginPlay()
 	aPlataformas.Reserve(CantidadPlataformas);
 	APlataforma* PlataformaActual = nullptr;
 
-	// Crea una instancia de la fabrica de plataformas
-	AFabricaPlataformas* Fabrica = World->SpawnActor<AFabricaPlataformas>(FVector::ZeroVector, FRotator::ZeroRotator, Parametros);
+	// Creamos las dos fabricas concretas
+	FabricaRoja FabricaDeRojas;
+	FabricaAzul FabricaDeAzules;
 
-	//Factory Method
+	// Abstract Factory - Generamos plataformas con las fabricas concretas
 	for (int i = 0; i < CantidadPlataformas; i++)
 	{
 		int IndiceAleatorio = FMath::RandRange(0, PosicionesDisponibles.Num() - 1);
 		FVector SpawnLocation = PosicionesDisponibles[IndiceAleatorio];
+		
+		// Seleccionamos una de las dos fabricas
 		int TipoAleatorio = FMath::RandRange(0, 1);
-		PlataformaActual = Fabrica->CrearPlataforma(TipoAleatorio, SpawnLocation, Rotacion);
-		if (IsValid(PlataformaActual))
+		FabricaAbstracta* Fabrica = nullptr;
+		if (TipoAleatorio == 0)
+		{
+			Fabrica = &FabricaDeAzules;
+		}
+		else
+		{
+			Fabrica = &FabricaDeRojas;
+		}
+		// Creamos la plataforma mediante la fabrica seleccionada
+		PlataformaActual = Fabrica->CrearPlataforma(World, SpawnLocation, Rotacion);		if (IsValid(PlataformaActual))
 		{
 			aPlataformas.Add(PlataformaActual);
 		}

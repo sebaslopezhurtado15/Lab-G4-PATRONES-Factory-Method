@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AventuraUSFX022026L4Pawn.h"
-#include "AventuraUSFX022026L4Projectile.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
@@ -13,6 +12,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "Materials/Material.h"
+
+// Patron Abstract Factory
+#include "FabricaAbstracta.h"
+#include "FabricaRoja.h"
+#include "FabricaAzul.h"
 
 const FName AAventuraUSFX022026L4Pawn::MoveForwardBinding("MoveForward");
 const FName AAventuraUSFX022026L4Pawn::MoveRightBinding("MoveRight");
@@ -143,12 +147,26 @@ void AAventuraUSFX022026L4Pawn::FireShot(FVector FireDirection)
 			// Spawn projectile at an offset from this pawn
 			const FVector SpawnLocation = GetActorLocation() + FireRotation.RotateVector(GunOffset);
 
+			//tipo FabricaAbstracta <- o -> 
 			UWorld* const World = GetWorld();
 			if (World != nullptr)
 			{
-				// spawn the projectile
-				World->SpawnActor<AAventuraUSFX022026L4Projectile>(SpawnLocation, FireRotation);
+				// Creamos las dos fabricas concretas
+				FabricaRoja FabricaDeRojas;
+				FabricaAzul FabricaDeAzules;
+				FabricaAbstracta* Fabrica = nullptr;
+				if (FireDirection.Y < 0.0f)
+				{
+					Fabrica = &FabricaDeAzules;
+				}
+				else
+				{
+					Fabrica = &FabricaDeRojas;
+				}
+				// Creamos la pelota mediante Abstract Factory
+				Fabrica->CrearPelota(World, SpawnLocation, FireRotation);
 			}
+
 
 			bCanFire = false;
 			World->GetTimerManager().SetTimer(TimerHandle_ShotTimerExpired, this, &AAventuraUSFX022026L4Pawn::ShotTimerExpired, FireRate);
