@@ -1,12 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "FabricaPlataformas.h"
 
+#include "FabricaPlataformas.h"
 #include "Plataforma.h"
-#include "PlataformaIndestructible.h"
-#include "PlataformaDestructible.h"
+#include "PlataformaAerea.h"
+#include "PlataformaTerrestre.h"
+#include "PlataformaSubterranea.h"
+#include "PlataformaAcuatica.h"
 #include "Engine/World.h"
+
 
 
 // Sets default values
@@ -28,10 +31,11 @@ void AFabricaPlataformas::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-// Crea una plataforma según el tipo, posición y rotación recibidos.
+// Factory Method - Crea una plataforma según el tipo, posición y rotación recibidos.
 APlataforma* AFabricaPlataformas::CrearPlataforma(int Tipo, const FVector& Posicion, const FRotator& Rotacion)
 {
     UWorld* World = GetWorld();
+
     if (World == nullptr)
     {
         return nullptr;
@@ -40,11 +44,19 @@ APlataforma* AFabricaPlataformas::CrearPlataforma(int Tipo, const FVector& Posic
     Parametros.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
     if (Tipo == 0)
     {
-        return World->SpawnActor<APlataformaIndestructible>(Posicion, Rotacion, Parametros);
+        return World->SpawnActor<APlataformaAerea>(Posicion, Rotacion, Parametros);
     }
     else if (Tipo == 1)
     {
-        return World->SpawnActor<APlataformaDestructible>(Posicion, Rotacion, Parametros);
+        return World->SpawnActor<APlataformaTerrestre>(Posicion, Rotacion, Parametros);
+    }
+    else if (Tipo == 2)
+    {
+        return World->SpawnActor<APlataformaSubterranea>(Posicion, Rotacion, Parametros);
+    }
+    else if (Tipo == 3)
+    {
+        return World->SpawnActor<APlataformaAcuatica>(Posicion, Rotacion, Parametros);
     }
     return nullptr;
 }

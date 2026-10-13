@@ -13,6 +13,8 @@
 #include "PlataformaDestructible.h"
 // Singleton enemigo
 #include "Enemigo.h"
+// Factory Method
+#include "FabricaPlataformas.h"
 
 // Patron Abstract Factory
 #include "FabricaAbstracta.h"
@@ -86,6 +88,86 @@ void AAventuraUSFX022026L4GameMode::BeginPlay()
 		}
 		PosicionesDisponibles.RemoveAt(IndiceAleatorio);
 	}
+
+
+	// Factory Method - Crear las otras cuatro plataformas
+	AFabricaPlataformas* FabricaOtras = World->SpawnActor<AFabricaPlataformas>(
+		FVector::ZeroVector, FRotator::ZeroRotator, Parametros);
+
+	if (IsValid(FabricaOtras))
+	{
+		// Posiciones para cada tipo de plataforma
+		FVector PosicionesExtras[4] = {
+			FVector(200.0f, -850.0f, 200.0f), // Aerea - izquierda
+			FVector(650.0f, -850.0f, 160.0f), // Terrestre - izquierda
+			FVector(200.0f,  850.0f, 160.0f), // Subterranea - derecha
+			FVector(650.0f,  850.0f, 160.0f) };  // Acuatica - derecha
+		for (int Tipo = 0; Tipo < 4; Tipo++)
+		{
+			APlataforma* NuevaPlataforma = FabricaOtras->CrearPlataforma(Tipo, PosicionesExtras[Tipo], Rotacion);
+			if (IsValid(NuevaPlataforma))
+			{
+				aPlataformas.Add(NuevaPlataforma);
+			}
+		}
+	}
+
+	/*
+	// Factory Method - Crear 20 plataformas aleatorias
+	AFabricaPlataformas* FabricaOtras = World->SpawnActor<AFabricaPlataformas>(
+		FVector::ZeroVector, FRotator::ZeroRotator, Parametros);
+
+	if (IsValid(FabricaOtras))
+	{
+		TArray<FVector> PosicionesIzquierda;
+		TArray<FVector> PosicionesDerecha;
+
+		// Posiciones disponibles a ambos lados del Paintball
+		for (int X = 200; X <= 650; X += 90)
+		{
+			PosicionesIzquierda.Add(FVector(X, -850.0f, 160.0f));
+			PosicionesIzquierda.Add(FVector(X, -1000.0f, 160.0f));
+
+			PosicionesDerecha.Add(FVector(X, 850.0f, 160.0f));
+			PosicionesDerecha.Add(FVector(X, 1000.0f, 160.0f));
+		}
+
+		// Crear 10 plataformas en cada lado
+		for (int Lado = 0; Lado < 2; Lado++)
+		{
+			TArray<FVector>& Posiciones = (Lado == 0)
+				? PosicionesIzquierda
+				: PosicionesDerecha;
+
+			for (int i = 0; i < 10; i++)
+			{
+				// Seleccionamos una posicion y un tipo aleatorio
+				int Indice = FMath::RandRange(0, Posiciones.Num() - 1);
+				int Tipo = FMath::RandRange(0, 3);
+
+				FVector Posicion = Posiciones[Indice];
+
+				// Las plataformas aereas tienen mayor altura
+				if (Tipo == 0)
+				{
+					Posicion.Z = 200.0f;
+				}
+
+				// Creamos la plataforma mediante Factory Method
+				APlataforma* NuevaPlataforma =
+					FabricaOtras->CrearPlataforma(Tipo, Posicion, Rotacion);
+
+				if (IsValid(NuevaPlataforma))
+				{
+					aPlataformas.Add(NuevaPlataforma);
+				}
+
+				// Evitamos repetir la misma posicion
+				Posiciones.RemoveAt(Indice);
+			}
+		}
+	}*
+
 
 	/*antes para plataforma 5 o 20
 	for (int i = 0; i < CantidadPlataformas; i++)
